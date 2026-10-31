@@ -8,6 +8,12 @@ A comprehensive, fully formatted Microsoft Excel expense management system and d
 
 ## 🚀 Key Features
 
+* **👤 Multi-User Registration & Authentication**:
+  * Users can register with Full Name, Email, and Password, or Sign In securely.
+  * Native Web Crypto API password hashing (SHA-256 + cryptographic salt) with password reveal toggle (`👁️`).
+  * **User Data Segregation**: Every user's expenses, categories, and money pool allotments are completely isolated.
+  * Seamless account switching, user profile avatar badge, and guest/demo mode support.
+
 * **💳 Dual Payment Modes (Cash & Online)**:
   * Select payment mode (`Cash` or `Online`) via a dropdown menu for every expense.
   * Direct balance impact: Cash payments deduct from your **Cash Balance**, while Online payments deduct from your **Online Balance**.

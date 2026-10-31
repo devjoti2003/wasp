@@ -45,12 +45,115 @@
     ]
   };
 
-  // --- 2. STATE MANAGEMENT ---
+  // --- 2. AUTHENTICATION & USER MANAGEMENT ---
+  const USERS_KEY = 'wasp_registered_users_v1';
+  const CURRENT_USER_KEY = 'wasp_current_session_v1';
+
+  const AuthManager = {
+    getUsers() {
+      try {
+        const u = localStorage.getItem(USERS_KEY);
+        return u ? JSON.parse(u) : {};
+      } catch (e) {
+        return {};
+      }
+    },
+
+    saveUsers(users) {
+      try {
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      } catch (e) {}
+    },
+
+    getCurrentUser() {
+      try {
+        const s = localStorage.getItem(CURRENT_USER_KEY);
+        return s ? JSON.parse(s) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+
+    setCurrentUser(user) {
+      try {
+        if (user) {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        } else {
+          localStorage.removeItem(CURRENT_USER_KEY);
+        }
+      } catch (e) {}
+    },
+
+    async hashPassword(password, salt) {
+      const enc = new TextEncoder();
+      const data = enc.encode(salt + ':' + password);
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+
+    generateSalt() {
+      const arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+
+    async register(name, email, password) {
+      const cleanEmail = email.trim().toLowerCase();
+      const users = this.getUsers();
+      if (users[cleanEmail]) {
+        throw new Error('An account with this email already exists.');
+      }
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters long.');
+      }
+      const salt = this.generateSalt();
+      const hash = await this.hashPassword(password, salt);
+      const newUser = {
+        id: 'u_' + Date.now(),
+        name: name.trim(),
+        email: cleanEmail,
+        salt,
+        hash,
+        createdAt: new Date().toISOString()
+      };
+      users[cleanEmail] = newUser;
+      this.saveUsers(users);
+      this.setCurrentUser({ id: newUser.id, name: newUser.name, email: cleanEmail });
+      return newUser;
+    },
+
+    async login(email, password) {
+      const cleanEmail = email.trim().toLowerCase();
+      const users = this.getUsers();
+      const user = users[cleanEmail];
+      if (!user) {
+        throw new Error('No account found with this email.');
+      }
+      const hash = await this.hashPassword(password, user.salt);
+      if (hash !== user.hash) {
+        throw new Error('Incorrect password. Please try again.');
+      }
+      this.setCurrentUser({ id: user.id, name: user.name, email: cleanEmail });
+      return user;
+    },
+
+    logout() {
+      this.setCurrentUser(null);
+    }
+  };
+
+  function getUserStorageKey() {
+    const cur = AuthManager.getCurrentUser();
+    return cur ? `wasp_userdata_${cur.email}` : 'wasp_userdata_guest';
+  }
+
+  // --- 3. STATE MANAGEMENT ---
   let appState = loadState();
 
   function loadState() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const key = getUserStorageKey();
+      const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.allotment && Array.isArray(parsed.expenses)) {
@@ -65,13 +168,14 @@
 
   function saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      const key = getUserStorageKey();
+      localStorage.setItem(key, JSON.stringify(appState));
     } catch (e) {
       console.error('Failed to save state to localStorage:', e);
     }
   }
 
-  // --- 3. FORMATTING HELPERS ---
+  // --- 4. FORMATTING HELPERS ---
   const formatINR = (val) => {
     const num = Number(val) || 0;
     return '₹' + num.toLocaleString('en-IN', {
@@ -198,6 +302,23 @@
     themeToggleBtn: document.getElementById('themeToggleBtn'),
     themeToggleIcon: document.getElementById('themeToggleIcon'),
 
+    // Auth Elements
+    userProfileWidget: document.getElementById('userProfileWidget'),
+    authModal: document.getElementById('authModal'),
+    authModalTitle: document.getElementById('authModalTitle'),
+    closeAuthModalBtn: document.getElementById('closeAuthModalBtn'),
+    authTabLogin: document.getElementById('authTabLogin'),
+    authTabRegister: document.getElementById('authTabRegister'),
+    authAlert: document.getElementById('authAlert'),
+    loginForm: document.getElementById('loginForm'),
+    registerForm: document.getElementById('registerForm'),
+    loginEmail: document.getElementById('loginEmail'),
+    loginPassword: document.getElementById('loginPassword'),
+    registerName: document.getElementById('registerName'),
+    registerEmail: document.getElementById('registerEmail'),
+    registerPassword: document.getElementById('registerPassword'),
+    continueGuestBtn: document.getElementById('continueGuestBtn'),
+
     // Toast
     toastNotification: document.getElementById('toastNotification')
   };
@@ -211,6 +332,9 @@
     // Sync Theme icon
     updateThemeIcon();
 
+    // Render User session widget
+    renderUserProfileWidget();
+
     // Populate dropdowns
     populateFormDropdowns();
     populateCategorySelector();
@@ -223,9 +347,155 @@
 
     // Attach Event Listeners
     setupEventListeners();
+    setupAuthListeners();
 
     // Initial Render
     renderAll();
+  }
+
+  function renderUserProfileWidget() {
+    const user = AuthManager.getCurrentUser();
+    const container = elements.userProfileWidget;
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (user) {
+      const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
+      const badge = document.createElement('div');
+      badge.className = 'user-badge';
+      badge.innerHTML = `
+        <span class="user-avatar-circle">${escapeHtml(initial)}</span>
+        <span class="user-name-text" title="${escapeHtml(user.email)}">${escapeHtml(user.name || user.email)}</span>
+        <button type="button" class="btn-signout" id="userSignOutBtn" title="Log Out">Log Out</button>
+      `;
+      container.appendChild(badge);
+
+      const signoutBtn = badge.querySelector('#userSignOutBtn');
+      if (signoutBtn) {
+        signoutBtn.addEventListener('click', () => {
+          AuthManager.logout();
+          appState = loadState();
+          syncSettingsInputs();
+          renderUserProfileWidget();
+          renderAll();
+          showToast('Signed out successfully');
+        });
+      }
+    } else {
+      const signinBtn = document.createElement('button');
+      signinBtn.type = 'button';
+      signinBtn.className = 'btn-signin-header';
+      signinBtn.innerHTML = `👤 Sign In / Register`;
+      signinBtn.addEventListener('click', openAuthModal);
+      container.appendChild(signinBtn);
+    }
+  }
+
+  function syncSettingsInputs() {
+    elements.inputTotalMoney.value = appState.allotment.totalMoney;
+    elements.inputCashAllotted.value = appState.allotment.cashAllotted;
+    elements.inputOnlineAllotted.value = appState.allotment.onlineAllotted;
+  }
+
+  function openAuthModal() {
+    hideAuthAlert();
+    elements.authModal.showModal();
+  }
+
+  function closeAuthModal() {
+    elements.authModal.close();
+  }
+
+  function showAuthAlert(msg, type = 'error') {
+    elements.authAlert.textContent = msg;
+    elements.authAlert.className = `auth-alert alert-${type}`;
+    elements.authAlert.style.display = 'block';
+  }
+
+  function hideAuthAlert() {
+    elements.authAlert.style.display = 'none';
+  }
+
+  function setupAuthListeners() {
+    // Switch between Sign In and Register
+    elements.authTabLogin.addEventListener('click', () => {
+      elements.authTabLogin.classList.add('active');
+      elements.authTabRegister.classList.remove('active');
+      elements.loginForm.style.display = 'block';
+      elements.registerForm.style.display = 'none';
+      elements.authModalTitle.textContent = 'Account Sign In';
+      hideAuthAlert();
+    });
+
+    elements.authTabRegister.addEventListener('click', () => {
+      elements.authTabRegister.classList.add('active');
+      elements.authTabLogin.classList.remove('active');
+      elements.loginForm.style.display = 'none';
+      elements.registerForm.style.display = 'block';
+      elements.authModalTitle.textContent = 'Create New Account';
+      hideAuthAlert();
+    });
+
+    // Close buttons
+    elements.closeAuthModalBtn.addEventListener('click', closeAuthModal);
+    elements.continueGuestBtn.addEventListener('click', () => {
+      closeAuthModal();
+      showToast('Continuing as Guest / Demo Mode');
+    });
+
+    // Password visibility toggle buttons
+    document.querySelectorAll('.btn-toggle-password').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        if (input) {
+          const isPass = input.type === 'password';
+          input.type = isPass ? 'text' : 'password';
+          btn.textContent = isPass ? '🔒' : '👁️';
+        }
+      });
+    });
+
+    // Sign In Submission
+    elements.loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAuthAlert();
+      const email = elements.loginEmail.value;
+      const pass = elements.loginPassword.value;
+      try {
+        const user = await AuthManager.login(email, pass);
+        closeAuthModal();
+        appState = loadState();
+        syncSettingsInputs();
+        renderUserProfileWidget();
+        renderAll();
+        showToast(`Welcome back, ${user.name || user.email}!`);
+      } catch (err) {
+        showAuthAlert(err.message, 'error');
+      }
+    });
+
+    // Register Submission
+    elements.registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAuthAlert();
+      const name = elements.registerName.value;
+      const email = elements.registerEmail.value;
+      const pass = elements.registerPassword.value;
+      try {
+        const user = await AuthManager.register(name, email, pass);
+        // Save initial default state for new user
+        saveState();
+        closeAuthModal();
+        appState = loadState();
+        syncSettingsInputs();
+        renderUserProfileWidget();
+        renderAll();
+        showToast(`Account created! Welcome, ${user.name}!`);
+      } catch (err) {
+        showAuthAlert(err.message, 'error');
+      }
+    });
   }
 
   function toggleTheme() {

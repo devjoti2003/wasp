@@ -32,6 +32,10 @@
         <button type="button" class="btn-theme-toggle" id="themeToggleBtn" aria-label="Toggle dark mode" title="Toggle Light / Dark mode">
           <span id="themeToggleIcon" aria-hidden="true">🌙</span>
         </button>
+        <!-- User Session Widget -->
+        <div id="userProfileWidget" class="user-profile-widget">
+          <!-- Injected dynamically: User pill or Sign In button -->
+        </div>
         <button type="button" class="btn btn-primary" id="openAddModalBtn">
           <span aria-hidden="true">+</span> Add Expense
         </button>
@@ -554,6 +558,73 @@
         <button type="submit" class="btn btn-primary" id="saveExpenseBtn">Save Entry</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Modal Dialog: User Authentication (Login / Register) -->
+  <dialog id="authModal" class="app-dialog auth-dialog">
+    <div class="dialog-header">
+      <h3 id="authModalTitle">Account Sign In</h3>
+      <button type="button" class="dialog-close-btn" id="closeAuthModalBtn" aria-label="Close dialog">✕</button>
+    </div>
+    <div class="auth-dialog-body">
+      <!-- Auth Mode Switcher -->
+      <div class="auth-tab-bar" role="tablist">
+        <button type="button" class="auth-tab-btn active" id="authTabLogin" role="tab" aria-selected="true">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="authTabRegister" role="tab" aria-selected="false">Create Account</button>
+      </div>
+
+      <!-- Error / Alert Message -->
+      <div id="authAlert" class="auth-alert" style="display: none;" role="alert"></div>
+
+      <!-- Sign In Form -->
+      <form id="loginForm" class="auth-form" autocomplete="on">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" class="form-control" name="username" autocomplete="username" spellcheck="false" placeholder="name@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="loginPassword" class="form-control" name="current-password" autocomplete="current-password" placeholder="Enter your password" required>
+            <button type="button" class="btn-toggle-password" data-target="loginPassword" aria-label="Toggle password visibility">👁️</button>
+          </div>
+        </div>
+        <div class="auth-actions">
+          <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" class="auth-form" style="display: none;" autocomplete="on">
+        <div class="form-group">
+          <label for="registerName">Full Name</label>
+          <input type="text" id="registerName" class="form-control" name="name" autocomplete="name" placeholder="Devjoti Kundu" required>
+        </div>
+        <div class="form-group">
+          <label for="registerEmail">Email Address</label>
+          <input type="email" id="registerEmail" class="form-control" name="username" autocomplete="username" spellcheck="false" placeholder="name@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Password</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="registerPassword" class="form-control" name="new-password" autocomplete="new-password" minlength="6" placeholder="Create password (min 6 characters)" required>
+            <button type="button" class="btn-toggle-password" data-target="registerPassword" aria-label="Toggle password visibility">👁️</button>
+          </div>
+        </div>
+        <div class="auth-actions">
+          <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+        </div>
+      </form>
+
+      <div class="auth-footer-divider">
+        <span>OR</span>
+      </div>
+      <div class="auth-footer-actions">
+        <button type="button" class="btn btn-secondary btn-block" id="continueGuestBtn">
+          Continue as Guest / Demo Mode
+        </button>
+      </div>
+    </div>
   </dialog>
 
   <!-- Notification Toast -->
