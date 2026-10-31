@@ -1,6 +1,8 @@
 # 📊 Expense Tracker & Wealth Dashboard (₹ INR)
 
-A comprehensive, fully formatted Microsoft Excel expense management system and financial command center with real-time analytics, automated date calculations, category drilldowns, and cash vs. online balance tracking.
+A comprehensive, fully formatted Microsoft Excel expense management system and dynamic web application with real-time analytics, automated date calculations, category drilldowns, and cash vs. online balance tracking.
+
+🌐 **Live Web Application**: [https://devjoti2003.github.io/expense-tracker-dashboard/](https://devjoti2003.github.io/expense-tracker-dashboard/)
 
 ---
 
