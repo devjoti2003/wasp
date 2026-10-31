@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expense Dashboard & Wealth Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">₹</div>
+        <div>
+          <h1 class="brand-title">EXPENSE DASHBOARD</h1>
+          <p class="brand-tagline">Track · Categorise · Analyse &nbsp;|&nbsp; All amounts in ₹</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="header-date" id="currentDateDisplay">As of Today</span>
+        <button type="button" class="btn btn-primary" id="openAddModalBtn">
+          <span aria-hidden="true">+</span> Add Expense
+        </button>
+      </div>
+    </div>
+    
+    <!-- Tab Navigation -->
+    <nav class="nav-tabs" aria-label="Workbook Sheets">
+      <div class="nav-container">
+        <button type="button" class="tab-btn active" data-tab="summary-tab">
+          <span class="tab-icon" aria-hidden="true">📊</span> Summary
+        </button>
+        <button type="button" class="tab-btn" data-tab="log-tab">
+          <span class="tab-icon" aria-hidden="true">📝</span> Expense Log
+        </button>
+        <button type="button" class="tab-btn" data-tab="ledger-tab">
+          <span class="tab-icon" aria-hidden="true">📑</span> Sorted Ledger
+        </button>
+        <button type="button" class="tab-btn" data-tab="category-tab">
+          <span class="tab-icon" aria-hidden="true">🔍</span> Category View
+        </button>
+        <button type="button" class="tab-btn" data-tab="settings-tab">
+          <span class="tab-icon" aria-hidden="true">⚙️</span> Allotment & Lists
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content Views -->
+  <main class="main-content">
+
+    <!-- 1. SUMMARY TAB -->
+    <section id="summary-tab" class="tab-pane active" aria-labelledby="summary-heading">
+      <h2 id="summary-heading" class="visually-hidden">Dashboard Summary</h2>
+      
+      <!-- Top 8 KPI Metric Cards -->
+      <div class="kpi-grid">
+        <!-- Card 1: Total Money -->
+        <article class="kpi-card">
+          <div class="kpi-label">TOTAL MONEY</div>
+          <div class="kpi-value" id="kpiTotalMoney">₹0</div>
+          <div class="kpi-sub" id="kpiTotalMoneySub">Cash ₹0 · Online ₹0</div>
+        </article>
+
+        <!-- Card 2: Total Spent -->
+        <article class="kpi-card">
+          <div class="kpi-label">TOTAL SPENT</div>
+          <div class="kpi-value text-spent" id="kpiTotalSpent">₹0</div>
+          <div class="kpi-sub" id="kpiTotalSpentSub">0 entries</div>
+        </article>
+
+        <!-- Card 3: Money Left -->
+        <article class="kpi-card highlight-card">
+          <div class="kpi-label">MONEY LEFT</div>
+          <div class="kpi-value" id="kpiMoneyLeft">₹0</div>
+          <div class="kpi-sub" id="kpiMoneyLeftSub">100% remaining</div>
+        </article>
+
+        <!-- Card 4: Cash Left -->
+        <article class="kpi-card">
+          <div class="kpi-label">CASH LEFT</div>
+          <div class="kpi-value text-cash" id="kpiCashLeft">₹0</div>
+          <div class="kpi-sub" id="kpiCashLeftSub">of ₹0 cash · 100% remaining</div>
+        </article>
+
+        <!-- Card 5: Online Balance -->
+        <article class="kpi-card">
+          <div class="kpi-label">ONLINE BALANCE</div>
+          <div class="kpi-value text-online" id="kpiOnlineBalance">₹0</div>
+          <div class="kpi-sub" id="kpiOnlineBalanceSub">of ₹0 online · 100% remaining</div>
+        </article>
+
+        <!-- Card 6: Latest Month -->
+        <article class="kpi-card">
+          <div class="kpi-label" id="kpiLatestMonthLabel">LATEST MONTH</div>
+          <div class="kpi-value" id="kpiLatestMonth">₹0</div>
+          <div class="kpi-sub" id="kpiLatestMonthSub">Current Month Spend</div>
+        </article>
+
+        <!-- Card 7: Transactions -->
+        <article class="kpi-card">
+          <div class="kpi-label">TRANSACTIONS</div>
+          <div class="kpi-value" id="kpiTransactionsCount">0</div>
+          <div class="kpi-sub" id="kpiAvgPerEntry">Avg ₹0 per entry</div>
+        </article>
+
+        <!-- Card 8: Top Category -->
+        <article class="kpi-card">
+          <div class="kpi-label">TOP CATEGORY</div>
+          <div class="kpi-value text-accent" id="kpiTopCategory">–</div>
+          <div class="kpi-sub" id="kpiTopCategorySub">0% of spend</div>
+        </article>
+      </div>
+
+      <!-- Money Allotment Table & Where Your Money Stands Chart -->
+      <div class="dashboard-row">
+        <!-- Money Allocation Section -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>MY MONEY · ALLOT YOUR CASH & ONLINE</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ITEM</th>
+                  <th class="text-right">AMOUNT (₹)</th>
+                  <th class="text-right">% OF TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Total money</td>
+                  <td class="text-right font-bold" id="allotTotalMoney">₹20,000</td>
+                  <td class="text-right" id="allotTotalMoneyPct">100%</td>
+                </tr>
+                <tr class="editable-row">
+                  <td>Cash allotted</td>
+                  <td class="text-right font-bold text-cash" id="allotCash">₹8,000</td>
+                  <td class="text-right" id="allotCashPct">40.0%</td>
+                </tr>
+                <tr class="editable-row">
+                  <td>Online allotted</td>
+                  <td class="text-right font-bold text-online" id="allotOnline">₹12,000</td>
+                  <td class="text-right" id="allotOnlinePct">60.0%</td>
+                </tr>
+                <tr class="muted-row">
+                  <td>Unallocated (should be 0)</td>
+                  <td class="text-right font-bold" id="allotUnallocated">₹0</td>
+                  <td class="text-right" id="allotUnallocatedPct">0.0%</td>
+                </tr>
+                <tr class="divider-row">
+                  <td>Spent so far</td>
+                  <td class="text-right text-spent font-bold" id="allotSpentSoFar">₹120</td>
+                  <td class="text-right" id="allotSpentPct">0.6%</td>
+                </tr>
+                <tr>
+                  <td>Cash left</td>
+                  <td class="text-right text-cash font-bold" id="allotCashLeft">₹7,880</td>
+                  <td class="text-right" id="allotCashLeftPct">39.4%</td>
+                </tr>
+                <tr>
+                  <td>Online left</td>
+                  <td class="text-right text-online font-bold" id="allotOnlineLeft">₹12,000</td>
+                  <td class="text-right" id="allotOnlineLeftPct">60.0%</td>
+                </tr>
+                <tr class="highlight-row">
+                  <td>MONEY LEFT</td>
+                  <td class="text-right font-bold" id="allotMoneyLeft">₹19,880</td>
+                  <td class="text-right font-bold" id="allotMoneyLeftPct">99.4%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Progress Bars -->
+          <div class="progress-section">
+            <div class="progress-item">
+              <div class="progress-labels">
+                <span>Cash used</span>
+                <span id="cashUsedText">2%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill fill-cash" id="cashProgressBar" style="width: 2%;"></div>
+              </div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-labels">
+                <span>Total money used</span>
+                <span id="totalUsedText">1%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill fill-total" id="totalProgressBar" style="width: 1%;"></div>
+              </div>
+            </div>
+          </div>
+          <p class="panel-hint">
+            💡 Spending is deducted directly from <strong>Cash</strong> or <strong>Online</strong> based on the Payment Mode chosen in each transaction.
+          </p>
+        </section>
+
+        <!-- Donut Chart: Where Your Money Stands -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>WHERE YOUR MONEY STANDS</h3>
+          </div>
+          <div class="chart-container">
+            <div id="moneyStandsChart" class="svg-chart-wrapper"></div>
+            <div class="chart-legend" id="moneyChartLegend"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Category Breakdown & Share of Total Spend Chart -->
+      <div class="dashboard-row">
+        <!-- Category Summary Table -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>SPEND BY CATEGORY</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="summaryCategoryTable">
+              <thead>
+                <tr>
+                  <th>CATEGORY</th>
+                  <th class="text-right">TOTAL (₹)</th>
+                  <th class="text-right">SHARE</th>
+                  <th class="text-right">ENTRIES</th>
+                </tr>
+              </thead>
+              <tbody id="summaryCategoryTableBody">
+                <!-- Injected dynamically -->
+              </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td>Total</td>
+                  <td class="text-right" id="categoryTableTotal">₹120</td>
+                  <td class="text-right">100%</td>
+                  <td class="text-right" id="categoryTableEntries">1</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        <!-- Share of Total Spend Chart -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>SHARE OF TOTAL SPEND</h3>
+          </div>
+          <div class="chart-container">
+            <div id="categoryShareChart" class="svg-chart-wrapper"></div>
+            <div class="chart-legend" id="categoryShareLegend"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Category Comparison & Monthly Trend Charts -->
+      <div class="dashboard-row">
+        <!-- Category Comparison Bar Chart -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>CATEGORY COMPARISON</h3>
+          </div>
+          <div class="chart-container">
+            <div id="categoryComparisonChart" class="svg-chart-wrapper"></div>
+          </div>
+        </section>
+
+        <!-- Monthly Trend Bar Chart -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>MONTHLY TREND · LAST 6 MONTHS</h3>
+          </div>
+          <div class="chart-container">
+            <div id="monthlyTrendChart" class="svg-chart-wrapper"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+
+    <!-- 2. EXPENSE LOG TAB -->
+    <section id="log-tab" class="tab-pane" aria-labelledby="log-heading">
+      <div class="panel-header-toolbar">
+        <div>
+          <h2 id="log-heading" class="panel-title">EXPENSE LOG</h2>
+          <p class="panel-sub">Pick Day · Month · Year or enter details — date, categories, and payment modes calculate automatically.</p>
+        </div>
+        <div class="toolbar-actions">
+          <button type="button" class="btn btn-primary" id="openAddModalBtn2">+ Add Row</button>
+          <button type="button" class="btn btn-secondary" id="exportCsvBtn">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="table-responsive">
+          <table class="data-table log-table">
+            <thead>
+              <tr>
+                <th class="text-center">#</th>
+                <th class="text-center">DAY</th>
+                <th class="text-center">MONTH</th>
+                <th class="text-center">YEAR</th>
+                <th class="text-center">DATE (auto)</th>
+                <th>DESCRIPTION</th>
+                <th class="text-center">CATEGORY</th>
+                <th class="text-center">PAYMENT MODE</th>
+                <th class="text-right">AMOUNT (₹)</th>
+                <th class="text-center">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody">
+              <!-- Injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div id="emptyLogState" class="empty-state" style="display: none;">
+          <p>No expense entries found. Click "+ Add Expense" to log your first transaction.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 3. SORTED LEDGER TAB -->
+    <section id="ledger-tab" class="tab-pane" aria-labelledby="ledger-heading">
+      <div class="panel-header-toolbar">
+        <div>
+          <h2 id="ledger-heading" class="panel-title">SORTED LEDGER</h2>
+          <p class="panel-sub" id="ledgerSummarySubtitle">All expenses, oldest → newest · running total</p>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-center">#</th>
+                <th class="text-center">DATE</th>
+                <th>DESCRIPTION</th>
+                <th class="text-center">CATEGORY</th>
+                <th class="text-center">PAYMENT MODE</th>
+                <th class="text-right">AMOUNT (₹)</th>
+                <th class="text-right">RUNNING TOTAL (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerTableBody">
+              <!-- Injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 4. CATEGORY VIEW TAB -->
+    <section id="category-tab" class="tab-pane" aria-labelledby="category-heading">
+      <div class="panel-header-toolbar">
+        <div>
+          <h2 id="category-heading" class="panel-title">CATEGORY DRILL-DOWN</h2>
+          <p class="panel-sub">Pick a category to view all of its itemized expenses sorted chronologically by date.</p>
+        </div>
+        <div class="category-selector-box">
+          <label for="categoryDrilldownSelect">SELECT CATEGORY ▸</label>
+          <select id="categoryDrilldownSelect" class="form-select highlight-select">
+            <!-- Injected dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Category Drill-down Stats Bar -->
+      <div class="category-stat-banner" id="categoryDrilldownBanner">
+        <div class="cat-stat-left" id="catDrilldownAmountEntries">₹0.00 · 0 entries</div>
+        <div class="cat-stat-right" id="catDrilldownAvgShare">Avg ₹0.00 per entry · 0.0% of all spend</div>
+      </div>
+
+      <div class="card-panel">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-center">#</th>
+                <th class="text-center">DATE</th>
+                <th>DESCRIPTION</th>
+                <th class="text-center">PAYMENT MODE</th>
+                <th class="text-right">AMOUNT (₹)</th>
+                <th class="text-right">RUNNING TOTAL (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="categoryDrilldownTableBody">
+              <!-- Injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div id="emptyCategoryState" class="empty-state" style="display: none;">
+          <p>No expenses found in this category yet.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 5. SETTINGS & LISTS TAB -->
+    <section id="settings-tab" class="tab-pane" aria-labelledby="settings-heading">
+      <h2 id="settings-heading" class="panel-title">ALLOTMENT & LISTS CONFIGURATION</h2>
+      <p class="panel-sub">Configure your cash and online money pools, review active categories, and manage data.</p>
+
+      <div class="dashboard-row">
+        <!-- Money Pool Configuration Form -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>MONEY POOL ALLOTMENT</h3>
+          </div>
+          <form id="moneyAllotmentForm" class="settings-form">
+            <div class="form-group">
+              <label for="inputTotalMoney">Total Money Pool (₹)</label>
+              <input type="number" id="inputTotalMoney" class="form-control" min="0" step="100" required>
+              <small>Total budget or monthly capital pool</small>
+            </div>
+            <div class="form-group">
+              <label for="inputCashAllotted">Cash Allotted (₹)</label>
+              <input type="number" id="inputCashAllotted" class="form-control" min="0" step="100" required>
+              <small>Physical cash in wallet / purse</small>
+            </div>
+            <div class="form-group">
+              <label for="inputOnlineAllotted">Online Allotted (₹)</label>
+              <input type="number" id="inputOnlineAllotted" class="form-control" min="0" step="100" required>
+              <small>Bank balance, savings, UPI, cards</small>
+            </div>
+            <div class="form-action-row">
+              <button type="submit" class="btn btn-primary">Save Allotments</button>
+              <span id="allotmentSavedMsg" class="save-indicator">Saved!</span>
+            </div>
+          </form>
+        </section>
+
+        <!-- Categories & Payment Modes List -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>ACTIVE CATEGORIES (11) & MODES (2)</h3>
+          </div>
+          <div class="lists-overview">
+            <div>
+              <h4>Payment Modes:</h4>
+              <div class="pill-group">
+                <span class="badge badge-cash">💵 Cash</span>
+                <span class="badge badge-online">💳 Online</span>
+              </div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <h4>Expense Categories:</h4>
+              <div class="pill-group" id="categoriesPillList">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+            <div style="margin-top: 1.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">
+              <h4>Data Backup:</h4>
+              <div class="pill-group">
+                <button type="button" class="btn btn-secondary" id="resetSampleDataBtn">Reset to Sample Data</button>
+                <button type="button" class="btn btn-danger" id="clearAllDataBtn">Clear All Log Rows</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- Modal Dialog: Add / Edit Transaction -->
+  <dialog id="expenseModal" class="app-dialog">
+    <div class="dialog-header">
+      <h3 id="modalTitle">Add Expense Entry</h3>
+      <button type="button" class="dialog-close-btn" id="closeModalBtn" aria-label="Close dialog">✕</button>
+    </div>
+    <form id="expenseForm" method="dialog" class="dialog-form">
+      <input type="hidden" id="editEntryId" value="">
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label for="formDay">Day</label>
+          <select id="formDay" class="form-select" required>
+            <!-- 1 to 31 -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="formMonth">Month</label>
+          <select id="formMonth" class="form-select" required>
+            <option value="Jan">Jan</option>
+            <option value="Feb">Feb</option>
+            <option value="Mar">Mar</option>
+            <option value="Apr">Apr</option>
+            <option value="May">May</option>
+            <option value="Jun">Jun</option>
+            <option value="Jul">Jul</option>
+            <option value="Aug">Aug</option>
+            <option value="Sep">Sep</option>
+            <option value="Oct" selected>Oct</option>
+            <option value="Nov">Nov</option>
+            <option value="Dec">Dec</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="formYear">Year</label>
+          <select id="formYear" class="form-select" required>
+            <!-- 2024 to 2040 -->
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="formDescription">Description</label>
+        <input type="text" id="formDescription" class="form-control" placeholder="e.g. Lunch – canteen, Groceries, Metro card" required>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label for="formCategory">Category</label>
+          <select id="formCategory" class="form-select" required>
+            <!-- 11 categories -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="formPaymentMode">Payment Mode</label>
+          <select id="formPaymentMode" class="form-select" required>
+            <option value="Cash">💵 Cash</option>
+            <option value="Online">💳 Online</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="formAmount">Amount (₹)</label>
+        <input type="number" id="formAmount" class="form-control" min="0.01" step="any" placeholder="0.00" required>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveExpenseBtn">Save Entry</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Notification Toast -->
+  <div id="toastNotification" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
