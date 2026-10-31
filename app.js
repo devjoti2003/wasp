@@ -194,6 +194,10 @@
     formPaymentMode: document.getElementById('formPaymentMode'),
     formAmount: document.getElementById('formAmount'),
 
+    // Theme Toggle
+    themeToggleBtn: document.getElementById('themeToggleBtn'),
+    themeToggleIcon: document.getElementById('themeToggleIcon'),
+
     // Toast
     toastNotification: document.getElementById('toastNotification')
   };
@@ -203,6 +207,9 @@
     // Current date header
     const now = new Date();
     elements.currentDateDisplay.textContent = `As of ${formatDateReadable(now)}`;
+
+    // Sync Theme icon
+    updateThemeIcon();
 
     // Populate dropdowns
     populateFormDropdowns();
@@ -219,6 +226,29 @@
 
     // Initial Render
     renderAll();
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      localStorage.setItem('wasp-color-theme', newTheme);
+    } catch (e) {}
+    updateThemeIcon();
+    renderAll();
+    showToast(`Switched to ${newTheme} mode`);
+  }
+
+  function updateThemeIcon() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (elements.themeToggleIcon) {
+      elements.themeToggleIcon.textContent = isDark ? '☀️' : '🌙';
+    }
+  }
+
+  function getThemeColor(varName, fallback) {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
   }
 
   function populateFormDropdowns() {
@@ -697,7 +727,7 @@
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('font-size', '14');
     text.setAttribute('font-weight', 'bold');
-    text.setAttribute('fill', '#1B263B');
+    text.setAttribute('fill', getThemeColor('--color-chart-text', '#1B263B'));
     text.textContent = formatINR(total);
     svg.appendChild(text);
 
@@ -745,6 +775,10 @@
     svg.setAttribute('width', '100%');
     svg.setAttribute('height', height);
 
+    const textColor = getThemeColor('--color-chart-text', '#1B263B');
+    const mutedColor = getThemeColor('--color-chart-muted', '#6B7280');
+    const emptyBarColor = getThemeColor('--color-progress-track', '#E5E7EB');
+
     catData.forEach((d, i) => {
       const y = i * (barHeight + gap) + 10;
       const barWidth = ((width - labelWidth - 70) * (d.val / maxVal));
@@ -756,7 +790,7 @@
       txt.setAttribute('text-anchor', 'end');
       txt.setAttribute('font-size', '11');
       txt.setAttribute('font-weight', '600');
-      txt.setAttribute('fill', '#1B263B');
+      txt.setAttribute('fill', textColor);
       txt.textContent = d.label;
       svg.appendChild(txt);
 
@@ -767,7 +801,7 @@
       rect.setAttribute('width', Math.max(2, barWidth));
       rect.setAttribute('height', barHeight);
       rect.setAttribute('rx', '3');
-      rect.setAttribute('fill', d.val > 0 ? '#2A9D8F' : '#E5E7EB');
+      rect.setAttribute('fill', d.val > 0 ? getThemeColor('--color-teal', '#2A9D8F') : emptyBarColor);
       svg.appendChild(rect);
 
       // Value text
@@ -776,7 +810,7 @@
       valTxt.setAttribute('y', y + barHeight - 4);
       valTxt.setAttribute('font-size', '11');
       valTxt.setAttribute('font-weight', 'bold');
-      valTxt.setAttribute('fill', d.val > 0 ? '#1B263B' : '#9CA3AF');
+      valTxt.setAttribute('fill', d.val > 0 ? textColor : mutedColor);
       valTxt.textContent = formatINR(d.val);
       svg.appendChild(valTxt);
     });
@@ -813,6 +847,12 @@
     svg.setAttribute('width', '100%');
     svg.setAttribute('height', height);
 
+    const gridColor = getThemeColor('--color-chart-grid', '#E5E7EB');
+    const barTextColor = getThemeColor('--color-chart-text', '#1B263B');
+    const xLabelColor = getThemeColor('--color-chart-muted', '#6B7280');
+    const activeBarFill = getThemeColor('--color-teal', '#2A9D8F');
+    const inactiveBarFill = getThemeColor('--color-progress-track', '#E2E8F0');
+
     // Horizontal grid lines
     for (let i = 0; i <= 4; i++) {
       const y = padY + (plotH / 4) * i;
@@ -821,7 +861,7 @@
       line.setAttribute('y1', y);
       line.setAttribute('x2', width - padX);
       line.setAttribute('y2', y);
-      line.setAttribute('stroke', '#E5E7EB');
+      line.setAttribute('stroke', gridColor);
       line.setAttribute('stroke-dasharray', '2,2');
       svg.appendChild(line);
     }
@@ -840,7 +880,7 @@
       rect.setAttribute('width', barW);
       rect.setAttribute('height', Math.max(3, h));
       rect.setAttribute('rx', '4');
-      rect.setAttribute('fill', item.val > 0 ? '#1B263B' : '#E2E8F0');
+      rect.setAttribute('fill', item.val > 0 ? activeBarFill : inactiveBarFill);
       svg.appendChild(rect);
 
       // Bar Value
@@ -851,7 +891,7 @@
         vTxt.setAttribute('text-anchor', 'middle');
         vTxt.setAttribute('font-size', '10');
         vTxt.setAttribute('font-weight', 'bold');
-        vTxt.setAttribute('fill', '#1B263B');
+        vTxt.setAttribute('fill', barTextColor);
         vTxt.textContent = formatINR(item.val);
         svg.appendChild(vTxt);
       }
@@ -863,7 +903,7 @@
       txt.setAttribute('text-anchor', 'middle');
       txt.setAttribute('font-size', '11');
       txt.setAttribute('font-weight', '600');
-      txt.setAttribute('fill', '#6B7280');
+      txt.setAttribute('fill', xLabelColor);
       txt.textContent = item.label;
       svg.appendChild(txt);
     });
@@ -873,6 +913,20 @@
 
   // --- 8. EVENT HANDLERS ---
   function setupEventListeners() {
+    // Theme Toggle
+    if (elements.themeToggleBtn) {
+      elements.themeToggleBtn.addEventListener('click', toggleTheme);
+    }
+
+    // OS Theme Preference sync
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('wasp-color-theme')) {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        updateThemeIcon();
+        renderAll();
+      }
+    });
+
     // Tabs Navigation
     elements.tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {

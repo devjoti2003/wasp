@@ -3,8 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <title>WASP | Expense Dashboard & Wealth Manager</title>
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // FOUC prevention: immediately apply user's saved theme or OS preference
+    try {
+      const savedTheme = localStorage.getItem('wasp-color-theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <!-- Header / Navigation Bar -->
@@ -19,6 +29,9 @@
       </div>
       <div class="header-actions">
         <span class="header-date" id="currentDateDisplay">As of Today</span>
+        <button type="button" class="btn-theme-toggle" id="themeToggleBtn" aria-label="Toggle dark mode" title="Toggle Light / Dark mode">
+          <span id="themeToggleIcon" aria-hidden="true">🌙</span>
+        </button>
         <button type="button" class="btn btn-primary" id="openAddModalBtn">
           <span aria-hidden="true">+</span> Add Expense
         </button>
