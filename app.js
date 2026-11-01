@@ -60,7 +60,12 @@
     getConfig() {
       try {
         const stored = localStorage.getItem(FIREBASE_CONFIG_KEY);
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.apiKey && parsed.apiKey.trim() !== '') {
+            return parsed;
+          }
+        }
       } catch (e) {}
       return window.DEFAULT_FIREBASE_CONFIG || null;
     },
