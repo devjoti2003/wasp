@@ -1232,8 +1232,8 @@
 
   // --- 7. PURE SVG CHART RENDERERS ---
   const PALETTE = [
-    '#2A9D8F', '#264653', '#E76F51', '#F4A261', '#E9C46A',
-    '#457B9D', '#1D3557', '#E63946', '#8338EC', '#3A86FF', '#FB5607'
+    '#059669', '#10B981', '#047857', '#0D9488', '#34D399',
+    '#2D6A4F', '#65A30D', '#0284C7', '#F59E0B', '#F43F5E', '#8B5CF6'
   ];
 
   function renderMoneyStandsChart(m) {
@@ -1243,10 +1243,10 @@
     legend.innerHTML = '';
 
     const slices = [
-      { label: 'Spent', value: Math.max(0, m.totalSpent), color: '#C0392B' },
+      { label: 'Spent', value: Math.max(0, m.totalSpent), color: '#EF4444' },
       { label: 'Cash left', value: Math.max(0, m.cashLeft), color: '#10B981' },
-      { label: 'Online left', value: Math.max(0, m.onlineLeft), color: '#2563EB' },
-      { label: 'Unallocated', value: Math.max(0, m.unallocated), color: '#9CA3AF' }
+      { label: 'Online left', value: Math.max(0, m.onlineLeft), color: '#0D9488' },
+      { label: 'Unallocated', value: Math.max(0, m.unallocated), color: '#94A3B8' }
     ].filter(s => s.value > 0);
 
     const totalVal = slices.reduce((sum, s) => sum + s.value, 0);
@@ -1653,6 +1653,10 @@
 
     elements.openAddModalBtn.addEventListener('click', openModal);
     elements.openAddModalBtn2.addEventListener('click', openModal);
+    const fabBtn = document.getElementById('fabAddExpense');
+    if (fabBtn) {
+      fabBtn.addEventListener('click', openModal);
+    }
 
     // Modal Closing
     elements.closeModalBtn.addEventListener('click', () => elements.expenseModal.close());

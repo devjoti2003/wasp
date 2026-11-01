@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#1B263B">
+  <meta name="theme-color" content="#0A3A2C">
   <meta name="description" content="WASP - Personal Expense Tracker, Cash & Online Money Allotment Manager with Multi-Month Sheets and Cloud Sync.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,6 +13,9 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>WASP | Expense Dashboard & Wealth Manager</title>
   <link rel="stylesheet" href="styles.css">
   <script>
@@ -834,6 +837,12 @@
       </div>
     </div>
   </dialog>
+
+  <!-- Material UI Floating Action Button (FAB) -->
+  <button type="button" class="mui-fab" id="fabAddExpense" title="Add New Expense (+)" aria-label="Add new expense">
+    <span class="fab-icon" aria-hidden="true">+</span>
+    <span class="fab-label">Add Expense</span>
+  </button>
 
   <!-- Notification Toast -->
   <div id="toastNotification" class="toast" role="status" aria-live="polite"></div>
