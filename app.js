@@ -694,6 +694,9 @@
 
     // Initial Render
     renderAll();
+
+    // Check for incoming Web Share Target (UPI Receipt / Payment share)
+    handleSharedUpiPayment();
   }
 
   function renderUserProfileWidget() {
@@ -2055,6 +2058,102 @@
     link.click();
     document.body.removeChild(link);
     showToast('Exported Expense Log to CSV');
+  }
+
+  // --- 8.5 WEB SHARE TARGET (UPI 1-TAP RECEIPT SHARING) ---
+  function handleSharedUpiPayment() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const shareText = urlParams.get('share_text') || urlParams.get('text') || '';
+      const shareTitle = urlParams.get('share_title') || urlParams.get('title') || '';
+      const shareUrl = urlParams.get('share_url') || urlParams.get('url') || '';
+
+      const combined = `${shareTitle} ${shareText} ${shareUrl}`.trim();
+      if (!combined) return;
+
+      // 1. Amount Extraction (₹ 150, Rs. 150, INR 150, etc.)
+      let amount = null;
+      const amountMatch = combined.match(/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d{1,2})?)/i) ||
+                          combined.match(/(?:paid|sent|payment of)\s+(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d{1,2})?)/i);
+      if (amountMatch) {
+        amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+      }
+
+      // 2. Payee / Merchant Extraction
+      let payee = '';
+      const payeeMatch = combined.match(/(?:paid to|sent to|transfer to|payment to|to|at)\s+([A-Za-z0-9\s&'.-]+?)(?:\s+(?:on|using|via|through|successful|success|with|ref|txn|upi|from|\.|$))/i);
+      if (payeeMatch && payeeMatch[1]) {
+        payee = payeeMatch[1].trim();
+      }
+
+      const description = payee ? payee : (combined.length > 50 ? combined.slice(0, 47) + '...' : combined);
+
+      // 3. Smart Category Guessing
+      const lower = (payee + ' ' + combined).toLowerCase();
+      let matchedCategory = 'Other';
+      if (/swiggy|zomato|canteen|food|restaurant|cafe|chai|tea|coffee|bake|burger|pizza|kitchen|dhaba|meals|lunch|dinner|breakfast|snack/.test(lower)) {
+        matchedCategory = 'Food';
+      } else if (/uber|ola|rapido|metro|petrol|fuel|auto|transit|irctc|redbus|flight|rail|cab/.test(lower)) {
+        matchedCategory = 'Travel';
+      } else if (/amazon|flipkart|myntra|zara|h&m|ajio|meesho|clothes|cloth|apparel|shopping|wear/.test(lower)) {
+        matchedCategory = 'Clothes';
+      } else if (/grocery|blinkit|zepto|instamart|bigbasket|supermarket|mart|vegetable|fruit|milk|ration|dmart/.test(lower)) {
+        matchedCategory = 'Food';
+      } else if (/pharmacy|apollo|medplus|netmeds|hospital|clinic|doctor|medicine|health|pharma/.test(lower)) {
+        matchedCategory = 'Health';
+      } else if (/electricity|water|wifi|broadband|recharge|airtel|jio|vi|cylinder|gas|bill|utility/.test(lower)) {
+        matchedCategory = 'Utilities';
+      } else if (/repair|hardware|mechanic|service|plumber|electrician/.test(lower)) {
+        matchedCategory = 'Repair';
+      } else if (/rent|landlord|flat|pg|hostel|room/.test(lower)) {
+        matchedCategory = 'Rent';
+      } else if (/netflix|spotify|youtube|hotstar|prime|subscription|recharge/.test(lower)) {
+        matchedCategory = 'Subscriptions';
+      } else if (/stationery|book|pen|xerox|print|course|udemy|coursera/.test(lower)) {
+        matchedCategory = 'Stationery';
+      }
+
+      // Open Modal & Pre-populate
+      setTimeout(() => {
+        elements.modalTitle.textContent = '⚡ Quick UPI Log';
+        elements.editEntryId.value = '';
+        elements.expenseForm.reset();
+
+        const now = new Date();
+        const curMonthObj = appState.months && appState.months[appState.activeMonth];
+        if (curMonthObj) {
+          elements.formMonth.value = curMonthObj.month;
+          elements.formYear.value = curMonthObj.year;
+          elements.formDay.value = Math.min(now.getDate(), 28);
+        } else {
+          elements.formDay.value = now.getDate();
+          elements.formMonth.value = MONTHS[now.getMonth()];
+          elements.formYear.value = now.getFullYear();
+        }
+
+        if (amount && !isNaN(amount)) {
+          elements.formAmount.value = amount;
+        }
+        elements.formDescription.value = description;
+        elements.formPaymentMode.value = 'Online';
+
+        if (elements.formCategory) {
+          const opt = Array.from(elements.formCategory.options).find(o =>
+            o.value.toLowerCase() === matchedCategory.toLowerCase() ||
+            o.value.toLowerCase().includes(matchedCategory.toLowerCase())
+          );
+          if (opt) elements.formCategory.value = opt.value;
+        }
+
+        elements.expenseModal.showModal();
+        showToast(`⚡ UPI payment detected (${amount ? '₹' + amount : 'Receipt'})! Review & Save.`);
+
+        // Clean up URL parameters without refreshing
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 350);
+    } catch (err) {
+      console.warn('Could not parse shared UPI data:', err);
+    }
   }
 
   function showToast(msg) {
