@@ -45,10 +45,158 @@
     ]
   };
 
-  // --- 2. AUTHENTICATION & USER MANAGEMENT ---
+  // --- 2. CLOUD SYNC & AUTHENTICATION ENGINE ---
   const USERS_KEY = 'wasp_registered_users_v1';
   const CURRENT_USER_KEY = 'wasp_current_session_v1';
+  const FIREBASE_CONFIG_KEY = 'wasp_firebase_config_v1';
 
+  // Unified Cloud Manager (Firebase + Local Storage Fallback)
+  const CloudManager = {
+    isConfigured: false,
+    db: null,
+    auth: null,
+    unsubscribeFirestore: null,
+
+    getConfig() {
+      try {
+        const stored = localStorage.getItem(FIREBASE_CONFIG_KEY);
+        if (stored) return JSON.parse(stored);
+      } catch (e) {}
+      return window.DEFAULT_FIREBASE_CONFIG || null;
+    },
+
+    saveConfig(cfg) {
+      try {
+        localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
+      } catch (e) {}
+    },
+
+    clearConfig() {
+      try {
+        localStorage.removeItem(FIREBASE_CONFIG_KEY);
+      } catch (e) {}
+      this.isConfigured = false;
+      this.db = null;
+      this.auth = null;
+    },
+
+    init() {
+      const cfg = this.getConfig();
+      if (window.firebase && cfg && cfg.apiKey && cfg.projectId && cfg.apiKey.trim() !== '') {
+        try {
+          if (!firebase.apps.length) {
+            firebase.initializeApp(cfg);
+          }
+          this.auth = firebase.auth();
+          this.db = firebase.firestore();
+          this.isConfigured = true;
+          this.setupAuthObserver();
+          this.updateUiIndicators(true);
+          return true;
+        } catch (err) {
+          console.warn('Firebase initialization error:', err);
+          this.isConfigured = false;
+        }
+      }
+      this.updateUiIndicators(false);
+      return false;
+    },
+
+    updateUiIndicators(isCloud) {
+      const pill = document.getElementById('cloudSyncStatusPill');
+      const text = document.getElementById('cloudStatusText');
+      const badge = document.getElementById('cloudStatusBadge');
+
+      if (pill && text) {
+        if (isCloud) {
+          pill.className = 'cloud-status-pill pill-cloud';
+          pill.title = 'Cloud Sync: Connected to Firebase Cloud Database';
+          text.textContent = 'Cloud Active';
+        } else {
+          pill.className = 'cloud-status-pill pill-local';
+          pill.title = 'Cloud Sync: Local Mode (Configure Firebase in Settings to sync across devices)';
+          text.textContent = 'Local';
+        }
+      }
+
+      if (badge) {
+        if (isCloud) {
+          badge.className = 'badge badge-cash';
+          badge.textContent = '🟢 Connected to Cloud';
+        } else {
+          badge.className = 'badge badge-category';
+          badge.textContent = '🟠 Local Mode (Offline)';
+        }
+      }
+    },
+
+    setupAuthObserver() {
+      if (!this.auth) return;
+      this.auth.onAuthStateChanged(async (fbUser) => {
+        if (fbUser) {
+          const userSession = {
+            id: fbUser.uid,
+            name: fbUser.displayName || fbUser.email.split('@')[0],
+            email: fbUser.email.toLowerCase(),
+            isCloud: true
+          };
+          AuthManager.setCurrentUser(userSession);
+          this.subscribeToUserFirestore(fbUser.uid);
+        } else {
+          if (this.unsubscribeFirestore) {
+            this.unsubscribeFirestore();
+            this.unsubscribeFirestore = null;
+          }
+          AuthManager.setCurrentUser(null);
+          appState = loadState();
+          syncSettingsInputs();
+          renderUserProfileWidget();
+          renderAll();
+        }
+      });
+    },
+
+    subscribeToUserFirestore(uid) {
+      if (!this.db) return;
+      if (this.unsubscribeFirestore) {
+        this.unsubscribeFirestore();
+      }
+
+      this.unsubscribeFirestore = this.db.collection('users').doc(uid).onSnapshot(async (doc) => {
+        if (doc.exists) {
+          const cloudData = doc.data();
+          if (cloudData.allotment && Array.isArray(cloudData.expenses)) {
+            appState = cloudData;
+            // Also cache locally
+            localStorage.setItem(getUserStorageKey(), JSON.stringify(appState));
+            syncSettingsInputs();
+            renderUserProfileWidget();
+            renderAll();
+          }
+        } else {
+          // Initialize doc with current app state
+          await this.saveToFirestore(uid, appState);
+        }
+      }, (err) => {
+        console.warn('Firestore subscription error:', err);
+      });
+    },
+
+    async saveToFirestore(uid, data) {
+      if (!this.db) return;
+      try {
+        await this.db.collection('users').doc(uid).set({
+          allotment: data.allotment,
+          expenses: data.expenses,
+          lastUpdated: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('Failed to sync to Firestore:', err);
+      }
+    }
+  };
+
+  // Local Storage Auth Manager (Fallback & Local Profile Manager)
   const AuthManager = {
     getUsers() {
       try {
@@ -99,6 +247,21 @@
 
     async register(name, email, password) {
       const cleanEmail = email.trim().toLowerCase();
+
+      // Cloud registration if connected
+      if (CloudManager.isConfigured && CloudManager.auth) {
+        try {
+          const cred = await CloudManager.auth.createUserWithEmailAndPassword(cleanEmail, password);
+          if (cred.user) {
+            await cred.user.updateProfile({ displayName: name.trim() });
+          }
+          return { id: cred.user.uid, name: name.trim(), email: cleanEmail };
+        } catch (fbErr) {
+          throw new Error(fbErr.message || 'Firebase Registration failed.');
+        }
+      }
+
+      // Local registration
       const users = this.getUsers();
       if (users[cleanEmail]) {
         throw new Error('An account with this email already exists.');
@@ -124,6 +287,22 @@
 
     async login(email, password) {
       const cleanEmail = email.trim().toLowerCase();
+
+      // Cloud login if connected
+      if (CloudManager.isConfigured && CloudManager.auth) {
+        try {
+          const cred = await CloudManager.auth.signInWithEmailAndPassword(cleanEmail, password);
+          return {
+            id: cred.user.uid,
+            name: cred.user.displayName || cleanEmail.split('@')[0],
+            email: cleanEmail
+          };
+        } catch (fbErr) {
+          throw new Error(fbErr.message || 'Firebase Sign In failed.');
+        }
+      }
+
+      // Local login
       const users = this.getUsers();
       const user = users[cleanEmail];
       if (!user) {
@@ -137,7 +316,12 @@
       return user;
     },
 
-    logout() {
+    async logout() {
+      if (CloudManager.isConfigured && CloudManager.auth) {
+        try {
+          await CloudManager.auth.signOut();
+        } catch (e) {}
+      }
       this.setCurrentUser(null);
     }
   };
@@ -170,8 +354,14 @@
     try {
       const key = getUserStorageKey();
       localStorage.setItem(key, JSON.stringify(appState));
+
+      // Push to Cloud Firestore if connected
+      const cur = AuthManager.getCurrentUser();
+      if (CloudManager.isConfigured && cur && cur.id) {
+        CloudManager.saveToFirestore(cur.id, appState);
+      }
     } catch (e) {
-      console.error('Failed to save state to localStorage:', e);
+      console.error('Failed to save state:', e);
     }
   }
 
@@ -281,6 +471,15 @@
     clearAllDataBtn: document.getElementById('clearAllDataBtn'),
     exportCsvBtn: document.getElementById('exportCsvBtn'),
 
+    // Cloud Sync Settings
+    firebaseConfigForm: document.getElementById('firebaseConfigForm'),
+    fbApiKey: document.getElementById('fbApiKey'),
+    fbProjectId: document.getElementById('fbProjectId'),
+    fbAuthDomain: document.getElementById('fbAuthDomain'),
+    fbAppId: document.getElementById('fbAppId'),
+    disconnectCloudBtn: document.getElementById('disconnectCloudBtn'),
+    cloudSavedIndicator: document.getElementById('cloudSavedIndicator'),
+
     // Modal
     expenseModal: document.getElementById('expenseModal'),
     modalTitle: document.getElementById('modalTitle'),
@@ -331,6 +530,18 @@
 
     // Sync Theme icon
     updateThemeIcon();
+
+    // Initialize Cloud Sync (Firebase or Local)
+    CloudManager.init();
+
+    // Populate Cloud Config inputs in Settings
+    const fbCfg = CloudManager.getConfig();
+    if (fbCfg) {
+      if (elements.fbApiKey) elements.fbApiKey.value = fbCfg.apiKey || '';
+      if (elements.fbProjectId) elements.fbProjectId.value = fbCfg.projectId || '';
+      if (elements.fbAuthDomain) elements.fbAuthDomain.value = fbCfg.authDomain || '';
+      if (elements.fbAppId) elements.fbAppId.value = fbCfg.appId || '';
+    }
 
     // Render User session widget
     renderUserProfileWidget();
@@ -1234,6 +1445,43 @@
       setTimeout(() => elements.allotmentSavedMsg.classList.remove('show'), 2000);
       showToast('Money pool allotments updated successfully!');
     });
+
+    // Cloud Sync Configuration Form Save
+    if (elements.firebaseConfigForm) {
+      elements.firebaseConfigForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const cfg = {
+          apiKey: elements.fbApiKey.value.trim(),
+          projectId: elements.fbProjectId.value.trim(),
+          authDomain: elements.fbAuthDomain.value.trim(),
+          appId: elements.fbAppId.value.trim()
+        };
+        CloudManager.saveConfig(cfg);
+        const success = CloudManager.init();
+        if (success) {
+          if (elements.cloudSavedIndicator) {
+            elements.cloudSavedIndicator.classList.add('show');
+            setTimeout(() => elements.cloudSavedIndicator.classList.remove('show'), 2500);
+          }
+          showToast('Connected to Firebase Cloud! Cross-device sync is now active.');
+        } else {
+          showToast('Saved. Please verify your Firebase project keys.');
+        }
+      });
+    }
+
+    // Disconnect Cloud button
+    if (elements.disconnectCloudBtn) {
+      elements.disconnectCloudBtn.addEventListener('click', () => {
+        CloudManager.clearConfig();
+        if (elements.fbApiKey) elements.fbApiKey.value = '';
+        if (elements.fbProjectId) elements.fbProjectId.value = '';
+        if (elements.fbAuthDomain) elements.fbAuthDomain.value = '';
+        if (elements.fbAppId) elements.fbAppId.value = '';
+        CloudManager.updateUiIndicators(false);
+        showToast('Switched to Local / Offline mode.');
+      });
+    }
 
     // Modal Opening
     const openModal = () => {

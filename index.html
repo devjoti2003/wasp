@@ -32,6 +32,10 @@
         <button type="button" class="btn-theme-toggle" id="themeToggleBtn" aria-label="Toggle dark mode" title="Toggle Light / Dark mode">
           <span id="themeToggleIcon" aria-hidden="true">🌙</span>
         </button>
+        <!-- Cloud Sync Indicator -->
+        <span id="cloudSyncStatusPill" class="cloud-status-pill pill-local" title="Cloud Sync: Local Mode">
+          <span class="status-dot"></span> <span id="cloudStatusText">Local</span>
+        </span>
         <!-- User Session Widget -->
         <div id="userProfileWidget" class="user-profile-widget">
           <!-- Injected dynamically: User pill or Sign In button -->
@@ -481,6 +485,54 @@
           </div>
         </section>
       </div>
+
+      <!-- Cloud Sync Configuration Section -->
+      <div class="dashboard-row">
+        <section class="card-panel" style="grid-column: 1 / -1;">
+          <div class="panel-header">
+            <h3>☁️ CROSS-DEVICE CLOUD SYNC (FIREBASE)</h3>
+            <span id="cloudStatusBadge" class="badge badge-cash">🟢 Cloud Sync Ready</span>
+          </div>
+          <div class="cloud-sync-container">
+            <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--color-text-muted);">
+              Connect your free Google Firebase backend to log in from <strong>any phone, tablet, or laptop</strong> in real-time.
+            </p>
+            <form id="firebaseConfigForm" class="settings-form">
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="fbApiKey">Firebase API Key</label>
+                  <input type="text" id="fbApiKey" class="form-control" placeholder="AIzaSy...">
+                </div>
+                <div class="form-group">
+                  <label for="fbProjectId">Project ID</label>
+                  <input type="text" id="fbProjectId" class="form-control" placeholder="wasp-expense-...">
+                </div>
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="fbAuthDomain">Auth Domain</label>
+                  <input type="text" id="fbAuthDomain" class="form-control" placeholder="wasp-expense-...firebaseapp.com">
+                </div>
+                <div class="form-group">
+                  <label for="fbAppId">App ID</label>
+                  <input type="text" id="fbAppId" class="form-control" placeholder="1:123456789:web:abcdef">
+                </div>
+              </div>
+              <div class="form-action-row">
+                <button type="submit" class="btn btn-primary">Save & Connect Cloud</button>
+                <button type="button" class="btn btn-secondary" id="disconnectCloudBtn">Use Local / Offline Mode</button>
+                <span id="cloudSavedIndicator" class="save-indicator">Connected!</span>
+              </div>
+            </form>
+            <div class="panel-hint" style="margin-top: 1rem;">
+              <strong>Quick 2-minute Setup:</strong>
+              1. Create a free project at <a href="https://console.firebase.google.com/" target="_blank" rel="noopener" style="color: var(--color-teal); text-decoration: underline;">console.firebase.google.com</a>.
+              2. Enable <strong>Authentication</strong> (Email/Password) and <strong>Firestore Database</strong>.
+              3. In Project Settings, register a Web App (<code>&lt;/&gt;</code>) and paste your config keys above.
+            </div>
+          </div>
+        </section>
+      </div>
     </section>
 
   </main>
@@ -630,6 +682,11 @@
   <!-- Notification Toast -->
   <div id="toastNotification" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- Firebase SDKs for Cross-Device Cloud Sync -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

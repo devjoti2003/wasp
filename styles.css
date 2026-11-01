@@ -229,6 +229,38 @@ body {
   transform: scale(1.05);
 }
 
+/* Cloud Sync Status Indicator in Header */
+.cloud-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #E2E8F0;
+  cursor: default;
+}
+
+.cloud-status-pill .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: background-color 0.3s ease;
+}
+
+.cloud-status-pill.pill-cloud .status-dot {
+  background-color: var(--color-cash-green);
+  box-shadow: 0 0 6px var(--color-cash-green);
+}
+
+.cloud-status-pill.pill-local .status-dot {
+  background-color: #F59E0B;
+}
+
 /* Tab Navigation */
 .nav-tabs {
   background-color: var(--color-navy-dark);
