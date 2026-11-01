@@ -1139,11 +1139,11 @@
       const badgeIcon = isCash ? '💵 Cash' : '💳 Online';
 
       tr.innerHTML = `
-        <td class="text-center text-muted">${index + 1}</td>
-        <td class="text-center font-bold text-input">${item.day}</td>
-        <td class="text-center font-bold text-input">${item.month}</td>
-        <td class="text-center font-bold text-input">${item.year}</td>
-        <td class="text-center text-muted">${formatDateReadable(d)}</td>
+        <td class="text-center text-muted col-num">${index + 1}</td>
+        <td class="text-center font-bold text-input col-day">${item.day}</td>
+        <td class="text-center font-bold text-input col-month">${item.month}</td>
+        <td class="text-center font-bold text-input col-year">${item.year}</td>
+        <td class="text-center text-muted col-date">${formatDateReadable(d)}</td>
         <td class="font-bold">${escapeHtml(item.description)}</td>
         <td class="text-center"><span class="badge badge-category">${item.category}</span></td>
         <td class="text-center"><span class="badge ${badgeClass}">${badgeIcon}</span></td>
