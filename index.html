@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#1B263B">
+  <meta name="description" content="WASP - Personal Expense Tracker, Cash & Online Money Allotment Manager with Multi-Month Sheets and Cloud Sync.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WASP">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>WASP | Expense Dashboard & Wealth Manager</title>
   <link rel="stylesheet" href="styles.css">
   <script>
@@ -36,6 +45,10 @@
         <span id="cloudSyncStatusPill" class="cloud-status-pill pill-local" title="Cloud Sync: Local Mode">
           <span class="status-dot"></span> <span id="cloudStatusText">Local</span>
         </span>
+        <!-- Install App Button (Shows on Android Chrome / Mobile) -->
+        <button type="button" class="btn btn-outline btn-install-app" id="installAppBtn" style="display: none;" title="Install WASP App on Android">
+          <span aria-hidden="true">📱</span> Install App
+        </button>
         <!-- User Session Widget -->
         <div id="userProfileWidget" class="user-profile-widget">
           <!-- Injected dynamically: User pill or Sign In button -->
@@ -67,6 +80,27 @@
       </div>
     </nav>
   </header>
+
+  <!-- Monthly Sheets Bar (Excel-style multi-month switcher) -->
+  <section class="month-sheets-bar" aria-label="Monthly Sheets Manager">
+    <div class="month-sheets-container">
+      <div class="month-sheets-info">
+        <span class="sheet-icon" aria-hidden="true">📅</span>
+        <span class="sheet-title">Month Sheet:</span>
+      </div>
+      <div class="month-tabs-scroll" id="monthTabsList" role="tablist" aria-label="Available month sheets">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="month-actions">
+        <button type="button" class="btn btn-sm btn-new-month" id="openNewMonthModalBtn" title="Create a new monthly sheet">
+          <span aria-hidden="true">➕</span> New Month Sheet
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="deleteCurrentMonthBtn" title="Delete current month sheet" style="display: none;">
+          <span aria-hidden="true">🗑️</span> Delete Month
+        </button>
+      </div>
+    </div>
+  </section>
 
   <!-- Main Content Views -->
   <main class="main-content">
@@ -533,9 +567,131 @@
           </div>
         </section>
       </div>
+
+      <!-- Month Sheets History & Android App Panel -->
+      <div class="dashboard-row">
+        <!-- Month Sheets Manager -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>📑 MONTH SHEETS MANAGER</h3>
+            <button type="button" class="btn btn-sm btn-outline" id="manageNewMonthBtn">+ Add Month</button>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+            Switch between monthly sheets or delete unwanted ones. Your active sheet determines the dashboard stats and expense logs.
+          </p>
+          <div class="table-container">
+            <table class="data-table" id="monthSheetsTable">
+              <thead>
+                <tr>
+                  <th>MONTH SHEET</th>
+                  <th>ALLOTMENT</th>
+                  <th>SPENT</th>
+                  <th>LEFT</th>
+                  <th>ENTRIES</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="monthSheetsTableBody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Android App & Offline Status -->
+        <section class="card-panel">
+          <div class="panel-header">
+            <h3>📱 ANDROID DEVICE APP</h3>
+            <span class="badge badge-cash">PWA Ready</span>
+          </div>
+          <div style="font-size: 0.9rem; color: var(--color-text-muted); line-height: 1.6;">
+            <p style="margin-bottom: 0.75rem;">
+              Install WASP directly on your Android phone or tablet for daily use. It opens like a native app, works completely offline, and syncs seamlessly with the cloud.
+            </p>
+            <div style="background-color: var(--color-canvas-bg); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1rem;">
+              <strong style="color: var(--color-teal); display: block; margin-bottom: 0.35rem;">How to install on Android Chrome:</strong>
+              <ol style="margin-left: 1.25rem; font-size: 0.85rem;">
+                <li>Open this site in <strong>Google Chrome</strong> on your Android phone.</li>
+                <li>Tap the <strong>three dots menu (⋮)</strong> at top right.</li>
+                <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+                <li>Tap <strong>Install</strong> — WASP will appear on your home screen and app drawer!</li>
+              </ol>
+            </div>
+            <button type="button" class="btn btn-primary btn-block" id="androidInstallBtnAction">
+              <span aria-hidden="true">📲</span> Install WASP on This Device
+            </button>
+          </div>
+        </section>
+      </div>
     </section>
 
   </main>
+
+  <!-- Modal Dialog: Create New Month Sheet -->
+  <dialog id="newMonthModal" class="app-dialog">
+    <div class="dialog-header">
+      <h3 id="newMonthModalTitle">Create New Month Sheet</h3>
+      <button type="button" class="dialog-close-btn" id="closeNewMonthModalBtn" aria-label="Close dialog">✕</button>
+    </div>
+    <form id="newMonthForm" method="dialog" class="dialog-form">
+      <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1.25rem;">
+        Start a fresh tracking sheet for a new month. Each sheet maintains its own allotment budget (Cash &amp; Online) and daily expense ledger.
+      </p>
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label for="newMonthSelect">Month</label>
+          <select id="newMonthSelect" class="form-select" required>
+            <option value="Jan">January</option>
+            <option value="Feb">February</option>
+            <option value="Mar">March</option>
+            <option value="Apr">April</option>
+            <option value="May">May</option>
+            <option value="Jun">June</option>
+            <option value="Jul">July</option>
+            <option value="Aug">August</option>
+            <option value="Sep">September</option>
+            <option value="Oct">October</option>
+            <option value="Nov">November</option>
+            <option value="Dec">December</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="newYearInput">Year</label>
+          <input type="number" id="newYearInput" class="form-control" min="2020" max="2035" value="2026" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.92rem; font-weight: 600;">
+          <input type="checkbox" id="copyAllotmentCheckbox" checked>
+          <span>Copy money pool allotment from current month</span>
+        </label>
+      </div>
+
+      <div id="newMonthAllotmentInputs" style="display: none;">
+        <div class="form-group">
+          <label for="newTotalMoney">Total Money Pool (₹)</label>
+          <input type="number" id="newTotalMoney" class="form-control" min="0" step="100" value="20000" required>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="newCashAllotted">Cash Allotted (₹)</label>
+            <input type="number" id="newCashAllotted" class="form-control" min="0" step="50" value="8000" required>
+          </div>
+          <div class="form-group">
+            <label for="newOnlineAllotted">Online Allotted (₹)</label>
+            <input type="number" id="newOnlineAllotted" class="form-control" min="0" step="50" value="12000" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" id="cancelNewMonthBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="confirmNewMonthBtn">Create &amp; Open Sheet</button>
+      </div>
+    </form>
+  </dialog>
 
 
   <!-- Modal Dialog: Add / Edit Transaction -->

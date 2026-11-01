@@ -22,9 +22,40 @@
   ];
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const FULL_MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
   const STORAGE_KEY = 'rupeetrack_expense_dashboard_v1';
 
   const DEFAULT_STATE = {
+    activeMonth: '2026-10',
+    months: {
+      '2026-10': {
+        id: '2026-10',
+        name: 'October 2026',
+        month: 'Oct',
+        year: 2026,
+        allotment: {
+          totalMoney: 20000,
+          cashAllotted: 8000,
+          onlineAllotted: 12000
+        },
+        expenses: [
+          {
+            id: '1',
+            day: 30,
+            month: 'Oct',
+            year: 2026,
+            date: '2026-10-30',
+            description: 'Lunch – canteen',
+            category: 'Meals',
+            mode: 'Cash',
+            amount: 120
+          }
+        ]
+      }
+    },
     allotment: {
       totalMoney: 20000,
       cashAllotted: 8000,
@@ -170,11 +201,13 @@
       this.unsubscribeFirestore = this.db.collection('users').doc(uid).onSnapshot(async (doc) => {
         if (doc.exists) {
           const cloudData = doc.data();
-          if (cloudData.allotment && Array.isArray(cloudData.expenses)) {
-            appState = cloudData;
+          if (cloudData.months || (cloudData.allotment && Array.isArray(cloudData.expenses))) {
+            appState = normalizeState(cloudData);
             // Also cache locally
             localStorage.setItem(getUserStorageKey(), JSON.stringify(appState));
             syncSettingsInputs();
+            renderMonthSheetsBar();
+            renderMonthSheetsTable();
             renderUserProfileWidget();
             renderAll();
           }
@@ -191,6 +224,8 @@
       if (!this.db) return;
       try {
         await this.db.collection('users').doc(uid).set({
+          activeMonth: data.activeMonth,
+          months: data.months,
           allotment: data.allotment,
           expenses: data.expenses,
           lastUpdated: new Date().toISOString()
@@ -337,6 +372,70 @@
   }
 
   // --- 3. STATE MANAGEMENT ---
+  function normalizeState(data) {
+    if (!data || typeof data !== 'object') {
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+
+    if (data.months && typeof data.months === 'object' && Object.keys(data.months).length > 0) {
+      Object.keys(data.months).forEach(k => {
+        const m = data.months[k];
+        if (!m.allotment) {
+          m.allotment = { totalMoney: 20000, cashAllotted: 8000, onlineAllotted: 12000 };
+        }
+        if (!Array.isArray(m.expenses)) {
+          m.expenses = [];
+        }
+        if (!m.name) {
+          const parts = k.split('-');
+          const y = parseInt(parts[0], 10);
+          const mNum = parseInt(parts[1], 10) - 1;
+          m.name = `${FULL_MONTH_NAMES[mNum] || parts[1]} ${y}`;
+        }
+      });
+
+      if (!data.activeMonth || !data.months[data.activeMonth]) {
+        const keys = Object.keys(data.months).sort();
+        data.activeMonth = keys[keys.length - 1];
+      }
+    } else {
+      const legacyExpenses = Array.isArray(data.expenses) ? data.expenses : [];
+      const legacyAllotment = data.allotment || { totalMoney: 20000, cashAllotted: 8000, onlineAllotted: 12000 };
+
+      let detectedKey = '2026-10';
+      if (legacyExpenses.length > 0 && legacyExpenses[0].year && legacyExpenses[0].month) {
+        const mIdx = MONTHS.indexOf(legacyExpenses[0].month);
+        const mNum = String(mIdx >= 0 ? mIdx + 1 : 10).padStart(2, '0');
+        detectedKey = `${legacyExpenses[0].year}-${mNum}`;
+      }
+
+      const [yStr, mStr] = detectedKey.split('-');
+      const yVal = parseInt(yStr, 10);
+      const mIdx = parseInt(mStr, 10) - 1;
+      const sheetName = `${FULL_MONTH_NAMES[mIdx] || 'Month'} ${yVal}`;
+
+      data.activeMonth = detectedKey;
+      data.months = {
+        [detectedKey]: {
+          id: detectedKey,
+          name: sheetName,
+          month: MONTHS[mIdx] || 'Oct',
+          year: yVal,
+          allotment: legacyAllotment,
+          expenses: legacyExpenses
+        }
+      };
+    }
+
+    const curMonth = data.months[data.activeMonth];
+    if (curMonth) {
+      data.allotment = curMonth.allotment;
+      data.expenses = curMonth.expenses;
+    }
+
+    return data;
+  }
+
   let appState = loadState();
 
   function loadState() {
@@ -345,9 +444,7 @@
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.allotment && Array.isArray(parsed.expenses)) {
-          return parsed;
-        }
+        return normalizeState(parsed);
       }
     } catch (e) {
       console.warn('Failed to load state from localStorage:', e);
@@ -357,6 +454,10 @@
 
   function saveState() {
     try {
+      if (appState.months && appState.activeMonth && appState.months[appState.activeMonth]) {
+        appState.months[appState.activeMonth].allotment = appState.allotment;
+        appState.months[appState.activeMonth].expenses = appState.expenses;
+      }
       const key = getUserStorageKey();
       localStorage.setItem(key, JSON.stringify(appState));
 
@@ -524,7 +625,29 @@
     continueGuestBtn: document.getElementById('continueGuestBtn'),
 
     // Toast
-    toastNotification: document.getElementById('toastNotification')
+    toastNotification: document.getElementById('toastNotification'),
+
+    // Month Sheets Elements
+    monthTabsList: document.getElementById('monthTabsList'),
+    openNewMonthModalBtn: document.getElementById('openNewMonthModalBtn'),
+    deleteCurrentMonthBtn: document.getElementById('deleteCurrentMonthBtn'),
+    manageNewMonthBtn: document.getElementById('manageNewMonthBtn'),
+    monthSheetsTableBody: document.getElementById('monthSheetsTableBody'),
+    newMonthModal: document.getElementById('newMonthModal'),
+    closeNewMonthModalBtn: document.getElementById('closeNewMonthModalBtn'),
+    cancelNewMonthBtn: document.getElementById('cancelNewMonthBtn'),
+    newMonthForm: document.getElementById('newMonthForm'),
+    newMonthSelect: document.getElementById('newMonthSelect'),
+    newYearInput: document.getElementById('newYearInput'),
+    copyAllotmentCheckbox: document.getElementById('copyAllotmentCheckbox'),
+    newMonthAllotmentInputs: document.getElementById('newMonthAllotmentInputs'),
+    newTotalMoney: document.getElementById('newTotalMoney'),
+    newCashAllotted: document.getElementById('newCashAllotted'),
+    newOnlineAllotted: document.getElementById('newOnlineAllotted'),
+
+    // Android / PWA Install Elements
+    installAppBtn: document.getElementById('installAppBtn'),
+    androidInstallBtnAction: document.getElementById('androidInstallBtnAction')
   };
 
   // --- 5. INITIALIZATION ---
@@ -806,6 +929,18 @@
     });
 
     const monthlyTotals = {};
+    if (appState.months) {
+      Object.values(appState.months).forEach(mSheet => {
+        if (mSheet && Array.isArray(mSheet.expenses)) {
+          mSheet.expenses.forEach(item => {
+            const amt = Number(item.amount) || 0;
+            const d = parseEntryDate(item);
+            const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthlyTotals[mKey] = (monthlyTotals[mKey] || 0) + amt;
+          });
+        }
+      });
+    }
 
     appState.expenses.forEach(item => {
       const amt = Number(item.amount) || 0;
@@ -824,10 +959,6 @@
         categoryTotals[item.category] = (categoryTotals[item.category] || 0) + amt;
         categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
       }
-
-      const d = parseEntryDate(item);
-      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      monthlyTotals[mKey] = (monthlyTotals[mKey] || 0) + amt;
     });
 
     const cashLeft = cashAllotted - cashSpent;
@@ -847,11 +978,6 @@
       }
     });
 
-    // Latest month
-    const mKeys = Object.keys(monthlyTotals).sort();
-    const latestMonthKey = mKeys.length > 0 ? mKeys[mKeys.length - 1] : null;
-    const latestMonthSpend = latestMonthKey ? monthlyTotals[latestMonthKey] : 0;
-
     return {
       totalMoney,
       cashAllotted,
@@ -869,8 +995,6 @@
       categoryCounts,
       topCat,
       topCatAmt,
-      latestMonthKey,
-      latestMonthSpend,
       monthlyTotals
     };
   }
@@ -896,15 +1020,13 @@
     elements.kpiOnlineBalance.textContent = formatINR(m.onlineLeft);
     elements.kpiOnlineBalanceSub.textContent = `of ${formatINR(m.onlineAllotted)} online · ${m.onlineAllotted > 0 ? formatPercent(m.onlineLeft / m.onlineAllotted) : '0%'} remaining`;
 
-    if (m.latestMonthKey) {
-      const [yr, mo] = m.latestMonthKey.split('-');
-      const moName = MONTHS[parseInt(mo, 10) - 1];
-      elements.kpiLatestMonthLabel.textContent = `LATEST MONTH · ${moName.toUpperCase()} ${yr}`;
-      elements.kpiLatestMonth.textContent = formatINR(m.latestMonthSpend);
-    } else {
-      elements.kpiLatestMonthLabel.textContent = 'LATEST MONTH';
-      elements.kpiLatestMonth.textContent = '₹0';
-    }
+    const activeMonthObj = appState.months && appState.months[appState.activeMonth];
+    const activeMonthName = activeMonthObj ? activeMonthObj.name : 'Current Month';
+    elements.kpiLatestMonthLabel.textContent = `${activeMonthName.toUpperCase()} SPEND`;
+    elements.kpiLatestMonth.textContent = formatINR(m.totalSpent);
+    elements.kpiLatestMonthSub.textContent = m.totalMoney > 0
+      ? `${formatPercent(m.totalSpent / m.totalMoney)} of monthly pool`
+      : 'Active sheet spend';
 
     elements.kpiTransactionsCount.textContent = appState.expenses.length;
     const avgSpend = appState.expenses.length > 0 ? (m.totalSpent / appState.expenses.length) : 0;
@@ -966,6 +1088,10 @@
     renderCategoryShareChart(m);
     renderCategoryComparisonChart(m);
     renderMonthlyTrendChart(m);
+
+    // 8. Render Month Sheets Navigation & Table
+    renderMonthSheetsBar();
+    renderMonthSheetsTable();
   }
 
   function renderSummaryCategoryTable(m) {
@@ -1306,16 +1432,30 @@
 
   function renderMonthlyTrendChart(m) {
     const container = document.getElementById('monthlyTrendChart');
+    if (!container) return;
     container.innerHTML = '';
 
-    // Generate last 6 months list
+    // Generate month list: from user's created sheets or default last 6 months
     const monthList = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const k = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
-      const label = `${MONTHS[dt.getMonth()]} ${dt.getFullYear().toString().slice(-2)}`;
-      monthList.push({ key: k, label, val: m.monthlyTotals[k] || 0 });
+    const createdKeys = Object.keys(appState.months || {}).sort();
+
+    if (createdKeys.length > 1) {
+      createdKeys.slice(-6).forEach(k => {
+        const mData = appState.months[k];
+        monthList.push({
+          key: k,
+          label: `${mData.month} ${mData.year.toString().slice(-2)}`,
+          val: m.monthlyTotals[k] || 0
+        });
+      });
+    } else {
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const k = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+        const label = `${MONTHS[dt.getMonth()]} ${dt.getFullYear().toString().slice(-2)}`;
+        monthList.push({ key: k, label, val: m.monthlyTotals[k] || 0 });
+      }
     }
 
     const maxVal = Math.max(...monthList.map(c => c.val), 200);
@@ -1494,9 +1634,16 @@
       elements.editEntryId.value = '';
       elements.expenseForm.reset();
       const now = new Date();
-      elements.formDay.value = now.getDate();
-      elements.formMonth.value = MONTHS[now.getMonth()];
-      elements.formYear.value = now.getFullYear();
+      const curMonthObj = appState.months && appState.months[appState.activeMonth];
+      if (curMonthObj) {
+        elements.formMonth.value = curMonthObj.month;
+        elements.formYear.value = curMonthObj.year;
+        elements.formDay.value = Math.min(now.getDate(), 28);
+      } else {
+        elements.formDay.value = now.getDate();
+        elements.formMonth.value = MONTHS[now.getMonth()];
+        elements.formYear.value = now.getFullYear();
+      }
       elements.expenseModal.showModal();
     };
 
@@ -1605,6 +1752,269 @@
 
     // Export CSV
     elements.exportCsvBtn.addEventListener('click', exportToCsv);
+
+    // Month Sheets Modal Openers
+    if (elements.openNewMonthModalBtn) {
+      elements.openNewMonthModalBtn.addEventListener('click', openNewMonthModal);
+    }
+    if (elements.manageNewMonthBtn) {
+      elements.manageNewMonthBtn.addEventListener('click', openNewMonthModal);
+    }
+    if (elements.closeNewMonthModalBtn) {
+      elements.closeNewMonthModalBtn.addEventListener('click', () => elements.newMonthModal.close());
+    }
+    if (elements.cancelNewMonthBtn) {
+      elements.cancelNewMonthBtn.addEventListener('click', () => elements.newMonthModal.close());
+    }
+
+    // Toggle copy allotment in new month modal
+    if (elements.copyAllotmentCheckbox) {
+      elements.copyAllotmentCheckbox.addEventListener('change', (e) => {
+        if (elements.newMonthAllotmentInputs) {
+          elements.newMonthAllotmentInputs.style.display = e.target.checked ? 'none' : 'block';
+        }
+      });
+    }
+
+    // Create New Month Form Submission
+    if (elements.newMonthForm) {
+      elements.newMonthForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const selMonth = elements.newMonthSelect.value;
+        const selYear = parseInt(elements.newYearInput.value, 10);
+        const mIdx = MONTHS.indexOf(selMonth);
+        const mNum = String(mIdx + 1).padStart(2, '0');
+        const monthKey = `${selYear}-${mNum}`;
+
+        if (appState.months[monthKey]) {
+          alert(`The sheet for "${FULL_MONTH_NAMES[mIdx]} ${selYear}" already exists. Switching to it.`);
+          switchActiveMonth(monthKey);
+          elements.newMonthModal.close();
+          return;
+        }
+
+        let totalMoney = Number(appState.allotment.totalMoney) || 20000;
+        let cashAllotted = Number(appState.allotment.cashAllotted) || 8000;
+        let onlineAllotted = Number(appState.allotment.onlineAllotted) || 12000;
+
+        if (!elements.copyAllotmentCheckbox.checked) {
+          totalMoney = Number(elements.newTotalMoney.value) || 0;
+          cashAllotted = Number(elements.newCashAllotted.value) || 0;
+          onlineAllotted = Number(elements.newOnlineAllotted.value) || 0;
+        }
+
+        const sheetName = `${FULL_MONTH_NAMES[mIdx]} ${selYear}`;
+        appState.months[monthKey] = {
+          id: monthKey,
+          name: sheetName,
+          month: selMonth,
+          year: selYear,
+          allotment: {
+            totalMoney,
+            cashAllotted,
+            onlineAllotted
+          },
+          expenses: []
+        };
+
+        switchActiveMonth(monthKey);
+        elements.newMonthModal.close();
+        showToast(`Created new sheet: ${sheetName}`);
+      });
+    }
+
+    // Delete Current Month Button
+    if (elements.deleteCurrentMonthBtn) {
+      elements.deleteCurrentMonthBtn.addEventListener('click', () => {
+        deleteMonthSheet(appState.activeMonth);
+      });
+    }
+
+    // Table Actions Delegation for Month Sheets in Settings
+    if (elements.monthSheetsTableBody) {
+      elements.monthSheetsTableBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        const key = btn.getAttribute('data-key');
+        if (action === 'switch-month') {
+          switchActiveMonth(key);
+        } else if (action === 'delete-month') {
+          deleteMonthSheet(key);
+        }
+      });
+    }
+
+    // Android PWA Install Handlers
+    if (elements.installAppBtn) {
+      elements.installAppBtn.addEventListener('click', triggerInstallApp);
+    }
+    if (elements.androidInstallBtnAction) {
+      elements.androidInstallBtnAction.addEventListener('click', triggerInstallApp);
+    }
+  }
+
+  const openNewMonthModal = () => {
+    const now = new Date();
+    const nextDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    elements.newMonthSelect.value = MONTHS[nextDate.getMonth()];
+    elements.newYearInput.value = nextDate.getFullYear();
+    elements.copyAllotmentCheckbox.checked = true;
+    if (elements.newMonthAllotmentInputs) {
+      elements.newMonthAllotmentInputs.style.display = 'none';
+    }
+    elements.newTotalMoney.value = appState.allotment.totalMoney;
+    elements.newCashAllotted.value = appState.allotment.cashAllotted;
+    elements.newOnlineAllotted.value = appState.allotment.onlineAllotted;
+    elements.newMonthModal.showModal();
+  };
+
+  function renderMonthSheetsBar() {
+    if (!elements.monthTabsList) return;
+    elements.monthTabsList.innerHTML = '';
+
+    const monthKeys = Object.keys(appState.months || {}).sort();
+    if (monthKeys.length === 0) return;
+
+    monthKeys.forEach(k => {
+      const mData = appState.months[k];
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = `month-tab-pill ${k === appState.activeMonth ? 'active' : ''}`;
+      pill.setAttribute('role', 'tab');
+      pill.setAttribute('aria-selected', k === appState.activeMonth ? 'true' : 'false');
+      pill.setAttribute('data-month-key', k);
+
+      const count = (mData.expenses && mData.expenses.length) || 0;
+      pill.innerHTML = `<span>${mData.name}</span> <span class="pill-count" title="${count} logged expenses">${count}</span>`;
+
+      pill.addEventListener('click', () => {
+        if (k !== appState.activeMonth) {
+          switchActiveMonth(k);
+        }
+      });
+
+      elements.monthTabsList.appendChild(pill);
+    });
+
+    if (elements.deleteCurrentMonthBtn) {
+      elements.deleteCurrentMonthBtn.style.display = monthKeys.length > 1 ? 'inline-flex' : 'none';
+    }
+  }
+
+  function renderMonthSheetsTable() {
+    if (!elements.monthSheetsTableBody) return;
+    elements.monthSheetsTableBody.innerHTML = '';
+
+    const monthKeys = Object.keys(appState.months || {}).sort().reverse();
+    monthKeys.forEach(k => {
+      const mData = appState.months[k];
+      const totalAllot = Number(mData.allotment.totalMoney) || 0;
+      let spent = 0;
+      (mData.expenses || []).forEach(e => spent += Number(e.amount) || 0);
+      const left = totalAllot - spent;
+      const count = (mData.expenses || []).length;
+      const isActive = (k === appState.activeMonth);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <strong>${mData.name}</strong>
+          ${isActive ? '<span class="badge badge-cash" style="margin-left: 0.5rem; font-size: 0.75rem;">Active</span>' : ''}
+        </td>
+        <td class="text-right">${formatINR(totalAllot)}</td>
+        <td class="text-right text-spent">${formatINR(spent)}</td>
+        <td class="text-right text-left">${formatINR(left)}</td>
+        <td class="text-right">${count}</td>
+        <td class="text-center">
+          ${!isActive ? `<button type="button" class="btn btn-sm btn-outline" data-action="switch-month" data-key="${k}">Open</button>` : '<span style="color: var(--color-teal); font-weight: 700; font-size: 0.82rem;">Current</span>'}
+          ${monthKeys.length > 1 ? `<button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-month" data-key="${k}" style="margin-left: 0.35rem;" title="Delete this sheet">🗑️</button>` : ''}
+        </td>
+      `;
+      elements.monthSheetsTableBody.appendChild(tr);
+    });
+  }
+
+  function switchActiveMonth(monthKey) {
+    if (!appState.months || !appState.months[monthKey]) return;
+    if (appState.months[appState.activeMonth]) {
+      appState.months[appState.activeMonth].allotment = appState.allotment;
+      appState.months[appState.activeMonth].expenses = appState.expenses;
+    }
+    appState.activeMonth = monthKey;
+    appState.allotment = appState.months[monthKey].allotment;
+    appState.expenses = appState.months[monthKey].expenses;
+    saveState();
+    syncSettingsInputs();
+    renderMonthSheetsBar();
+    renderMonthSheetsTable();
+    renderAll();
+    showToast(`Opened ${appState.months[monthKey].name}`);
+  }
+
+  function deleteMonthSheet(monthKey) {
+    const monthKeys = Object.keys(appState.months || {});
+    if (monthKeys.length <= 1) {
+      alert('You cannot delete the only remaining month sheet.');
+      return;
+    }
+    const sheetName = appState.months[monthKey]?.name || monthKey;
+    if (confirm(`Are you sure you want to delete the "${sheetName}" sheet and all its expense entries?`)) {
+      delete appState.months[monthKey];
+      if (appState.activeMonth === monthKey) {
+        const remainingKeys = Object.keys(appState.months).sort();
+        appState.activeMonth = remainingKeys[remainingKeys.length - 1];
+        appState.allotment = appState.months[appState.activeMonth].allotment;
+        appState.expenses = appState.months[appState.activeMonth].expenses;
+      }
+      saveState();
+      syncSettingsInputs();
+      renderMonthSheetsBar();
+      renderMonthSheetsTable();
+      renderAll();
+      showToast(`Deleted ${sheetName}`);
+    }
+  }
+
+  // --- Android PWA Service Worker & Install Prompt ---
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (elements.installAppBtn) {
+      elements.installAppBtn.style.display = 'inline-flex';
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    showToast('WASP is installed on your device!');
+    if (elements.installAppBtn) {
+      elements.installAppBtn.style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+
+  function triggerInstallApp() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          showToast('Thank you for installing WASP!');
+          if (elements.installAppBtn) elements.installAppBtn.style.display = 'none';
+        }
+        deferredPrompt = null;
+      });
+    } else {
+      alert('To install WASP on your Android device:\n\n1. Open Google Chrome on your phone.\n2. Tap the three dots (⋮) in the top-right.\n3. Tap "Install app" or "Add to Home screen".\n\nWASP runs full-screen like a native app with offline support!');
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => console.log('WASP Service Worker active:', reg.scope))
+        .catch((err) => console.warn('WASP Service Worker error:', err));
+    });
   }
 
   function exportToCsv() {

@@ -1111,6 +1111,159 @@ body {
 }
 
 /* ==========================================================================
+   Month Sheets Switcher & PWA Mobile Styles
+   ========================================================================== */
+.btn-install-app {
+  background-color: rgba(42, 157, 143, 0.15);
+  border: 1px solid var(--color-teal);
+  color: var(--color-teal);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-install-app:hover {
+  background-color: var(--color-teal);
+  color: #FFFFFF;
+}
+
+.month-sheets-bar {
+  background-color: var(--color-card-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.5rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.month-sheets-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.month-sheets-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  white-space: nowrap;
+}
+
+.month-sheets-info .sheet-icon {
+  font-size: 1rem;
+}
+
+.month-tabs-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.2rem 0;
+  flex: 1;
+}
+
+.month-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.month-tab-pill {
+  background-color: var(--color-canvas-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: 0.38rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.month-tab-pill:hover {
+  border-color: var(--color-teal);
+  color: var(--color-text-main);
+}
+
+.month-tab-pill.active {
+  background-color: var(--color-teal);
+  border-color: var(--color-teal);
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(42, 157, 143, 0.35);
+}
+
+.month-tab-pill .pill-count {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.month-tab-pill:not(.active) .pill-count {
+  background-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.month-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-new-month {
+  background-color: rgba(42, 157, 143, 0.12);
+  border: 1px solid var(--color-teal);
+  color: var(--color-teal);
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-new-month:hover {
+  background-color: var(--color-teal);
+  color: #FFFFFF;
+}
+
+.btn-outline-danger {
+  background: none;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #EF4444;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+
+.btn-outline-danger:hover {
+  background-color: #EF4444;
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
    Responsive Adaptations
    ========================================================================== */
 @media (max-width: 768px) {
@@ -1123,5 +1276,11 @@ body {
   .header-container {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .month-sheets-container {
+    padding: 0.25rem 0;
+  }
+  .month-sheets-info .sheet-title {
+    display: none;
   }
 }
