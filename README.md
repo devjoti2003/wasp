@@ -8,6 +8,18 @@ A comprehensive, fully formatted Microsoft Excel expense management system and d
 
 ## 🚀 Key Features
 
+* **📱 Android Mobile App & Offline PWA**:
+  * Installable as a native-like standalone app on **Android devices** (as well as tablets and desktops).
+  * Runs full screen without browser URL bars, includes an official launcher icon in your Android app drawer and home screen.
+  * Instant offline loading and persistence powered by a Service Worker (`sw.js`) and Web App Manifest (`manifest.json`).
+
+* **📅 Multi-Month "Sheets" Architecture**:
+  * Designed for daily use across consecutive months (e.g. October 2026, November 2026, December 2026, etc.).
+  * Dedicated **Month Sheets Switcher Bar** to toggle between months in one tap.
+  * Independent monthly money pools (Cash Allotted, Online Allotted, Total Money) and distinct monthly expense ledgers.
+  * Option to carry over budget allotments automatically to new months.
+  * Cross-month historical trend analytics on the Summary dashboard.
+
 * **👤 Multi-User Registration & Authentication**:
   * Users can register with Full Name, Email, and Password, or Sign In securely.
   * Native Web Crypto API password hashing (SHA-256 + cryptographic salt) with password reveal toggle (`👁️`).
